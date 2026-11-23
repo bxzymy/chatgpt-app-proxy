@@ -4,12 +4,12 @@
 
 这是一个可阅读、可修改的最小 PowerShell 启动器，尝试使 **Microsoft Store 版 Windows ChatGPT 桌面应用**通过已有的本地 HTTP/Mixed 代理连接，无需打开系统代理或 TUN 模式。
 
-> **非官方、实验性项目。** 不隶属于 OpenAI、Microsoft 或 Clash Verge；不提供 ChatGPT 客户端、代理节点或订阅。Windows 应用更新可能影响启动方式；检测到 App 进程不等于全部流量已走代理。
+> Windows 应用更新可能影响启动方式；检测到 App 进程不等于全部流量已走代理。建议配置代理规则，如果没有。
 
 ## 使用方法
 
 1. 启动 Clash Verge Rev / Mihomo 等本地代理软件，选择 **Rule** 模式，关闭系统代理和 TUN。
-2. 确认本地 **HTTP 或 Mixed 端口**为 `7890`。
+2. 确认本地 **HTTP 或 Mixed 端口**为 `7890`。https://github.com/bxzymy/chatgpt-app-proxy/blob/main/README.zh-CN.md
 3. 完全退出已运行的 ChatGPT（包括可能存在的后台进程）。
 4. 双击 `Launch-ChatGPT.cmd`。
 5. 在 Clash Verge 的**连接**页面检查 ChatGPT 相关域名及命中的代理规则。
@@ -53,6 +53,4 @@ Clash 的 Rule 仅负责处理**已经进入代理**的流量；它本身不会�
 
 ## 安全与免责声明
 
-脚本没有下载远程代码、安装驱动、修改系统代理或开启 TUN；也不会主动收集遥测。`.cmd` 使用的 `-ExecutionPolicy Bypass` 只作用于启动的 PowerShell 进程，不修改系统全局策略。运行前请阅读源码，不要上传节点订阅、凭据、Cookie 或含敏感信息的日志。
-
-本项目为**实验性非官方工具**。发布正式版本前应在真实 Windows 环境下验证不同 ChatGPT/MSIX 版本的兼容性。
+脚本没有下载远程代码、安装驱动、修改系统代理或开启 TUN；也不会主动收集遥测。`.cmd` 使用的 `-ExecutionPolicy Bypass` 只作用于启动的 PowerShell 进程，不修改系统全局策略。
