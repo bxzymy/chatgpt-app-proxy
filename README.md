@@ -4,7 +4,6 @@
 
 A minimal, auditable PowerShell launcher for the **Microsoft Store ChatGPT desktop app on Windows**. It attempts to send app network requests through an existing local HTTP/Mixed proxy **without enabling a system-wide proxy or TUN mode**.
 
-> **Unofficial and experimental.** Not affiliated with OpenAI, Microsoft or Clash Verge. The app is not bundled. Windows/MSIX updates may change launch behavior. A successful process launch does not prove that all app traffic uses the proxy.
 
 ## What it does
 
@@ -64,11 +63,6 @@ The scripts use built-in Windows PowerShell commands. No remote scripts are down
 
 Never publish proxy subscriptions, node credentials, ChatGPT tokens, session files, or private diagnostic logs.
 
-## Known limitations and compatibility
-
-This project has **not been verified on every Windows/ChatGPT version**. The release package should be tested on a real Windows installation before labeling it stable. `Invoke-CommandInDesktopPackage` is primarily a Microsoft debugging tool and does not guarantee normal app activation.
-
-Please report working and non-working combinations of Windows version, installed ChatGPT package/version, local proxy software and port, and whether requests appear in the proxy client's Connections view.
 
 ## License
 
