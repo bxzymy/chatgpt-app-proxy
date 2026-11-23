@@ -1,0 +1,9 @@
+# Local diagnostics / private config
+*.log
+logs/
+config.local.*
+# OS and editors
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
