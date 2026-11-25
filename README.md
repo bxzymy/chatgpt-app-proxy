@@ -1,6 +1,15 @@
-# ChatGPT App Proxy Launcher (PowerShell)
+# ChatGPT App Proxy (Windows / macOS)
 
 [简体中文](README.zh-CN.md)
+
+## Choose your platform
+
+| Platform | Entry point | Guide |
+| --- | --- | --- |
+| Windows | `Launch-ChatGPT.cmd` / PowerShell | [Windows quick start below](#quick-start) |
+| macOS | Native menu bar assistant `App Proxy.app` | [macOS guide and interface previews](docs/macos.md) |
+
+The macOS source and build script live in [`macos/`](macos/). The Windows PowerShell launcher documentation continues below.
 
 A minimal, auditable PowerShell launcher for the **Microsoft Store ChatGPT desktop app on Windows**. It attempts to send app network requests through an existing local HTTP/Mixed proxy **without enabling a system-wide proxy or TUN mode**.
 

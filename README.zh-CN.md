@@ -1,6 +1,15 @@
-# ChatGPT Windows 应用级代理启动器（PowerShell）
+# ChatGPT 应用级代理启动器（Windows / macOS）
 
 [English](README.md)
+
+## 选择平台
+
+| 平台 | 启动入口 | 使用说明 |
+| --- | --- | --- |
+| Windows | `Launch-ChatGPT.cmd` / PowerShell | [下方的 Windows 使用方法](#使用方法) |
+| macOS | 原生菜单栏助手 `App Proxy.app` | [macOS 指南与界面预览](docs/macos.zh-CN.md) |
+
+macOS 源码和构建脚本位于 [`macos/`](macos/)。下文保留 Windows PowerShell 启动器的使用说明。
 
 这是一个可阅读、可修改的最小 PowerShell 启动器，尝试使 **Microsoft Store 版 Windows ChatGPT 桌面应用**通过已有的本地 HTTP/Mixed 代理连接，无需打开系统代理或 TUN 模式。
 

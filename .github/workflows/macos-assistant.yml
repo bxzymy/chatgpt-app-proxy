@@ -1,0 +1,37 @@
+name: macOS menu bar assistant
+
+on:
+  push:
+    paths:
+      - 'macos/**'
+      - 'docs/macos*'
+      - 'docs/images/macos/**'
+      - '.github/workflows/macos-assistant.yml'
+  pull_request:
+    paths:
+      - 'macos/**'
+      - 'docs/macos*'
+      - 'docs/images/macos/**'
+      - '.github/workflows/macos-assistant.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate macOS source and model
+        run: |
+          bash -n macos/build.sh
+          node --check macos/ProxyAssistant/Core.js
+          node --check macos/ProxyAssistant/Platform.js
+          node --check macos/ProxyAssistant/App.js
+          node --test macos/tests/core.test.js
+      - name: Build and verify the macOS application
+        run: bash macos/build.sh
