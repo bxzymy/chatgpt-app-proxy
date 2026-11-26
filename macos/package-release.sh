@@ -14,7 +14,17 @@ actual=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$bundle
 [[ $actual == "$version" ]] || { printf 'The app version differs from VERSION. Rebuild it.\n' >&2; exit 1; }
 executable=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$bundle/Contents/Info.plist")
 /usr/bin/codesign --verify --deep --strict "$bundle"
-/usr/bin/lipo -verify_arch arm64 x86_64 "$bundle/Contents/MacOS/$executable"
+architectures=$(/usr/bin/lipo "$bundle/Contents/MacOS/$executable" -archs)
+printf 'Bundle architectures: %s\n' "$architectures"
+if [[ " $architectures " == *" arm64 "* ]]; then
+  apple_arch=arm64
+elif [[ " $architectures " == *" arm64e "* ]]; then
+  apple_arch=arm64e
+else
+  printf 'No Apple Silicon executable slice was found.\n' >&2
+  exit 1
+fi
+/usr/bin/lipo "$bundle/Contents/MacOS/$executable" -verify_arch "$apple_arch" x86_64
 name="AppProxy-$version-macOS-universal"
 archive="$output/$name.zip"
 [[ ! -e $archive ]] || { printf 'Refusing to overwrite an existing release: %s\n' "$archive" >&2; exit 1; }
@@ -31,13 +41,13 @@ cp LICENSE "$package/LICENSE"
 commit=$(git rev-parse HEAD)
 dirty=false
 [[ -z $(git status --porcelain --untracked-files=normal) ]] || dirty=true
-printf '{"version":"%s","platform":"macOS","architecture":"arm64 x86_64","sourceCommit":"%s","sourceDirty":%s,"builtAtUtc":"%s","signature":"ad-hoc; not notarized"}\n' \
-  "$version" "$commit" "$dirty" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$package/BUILD-INFO.json"
+printf '{"version":"%s","platform":"macOS","architecture":"%s","sourceCommit":"%s","sourceDirty":%s,"builtAtUtc":"%s","signature":"ad-hoc; not notarized"}\n' \
+  "$version" "$architectures" "$commit" "$dirty" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$package/BUILD-INFO.json"
 /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$package" "$archive"
 # Verify the application extracted from the final ZIP, including its signature and slices.
 /usr/bin/ditto -x -k "$archive" "$stage/extracted"
 extracted="$stage/extracted/$name/App Proxy.app"
 /usr/bin/codesign --verify --deep --strict "$extracted"
-/usr/bin/lipo -verify_arch arm64 x86_64 "$extracted/Contents/MacOS/$executable"
+/usr/bin/lipo "$extracted/Contents/MacOS/$executable" -verify_arch "$apple_arch" x86_64
 [[ -f "$stage/extracted/$name/README.zh-CN.md" && -f "$stage/extracted/$name/LICENSE" ]]
 printf 'Packaged and verified: %s\n' "$archive"
