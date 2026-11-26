@@ -4,12 +4,14 @@ on:
   push:
     paths:
       - 'macos/**'
+      - 'VERSION'
       - 'docs/macos*'
       - 'docs/images/macos/**'
       - '.github/workflows/macos-assistant.yml'
   pull_request:
     paths:
       - 'macos/**'
+      - 'VERSION'
       - 'docs/macos*'
       - 'docs/images/macos/**'
       - '.github/workflows/macos-assistant.yml'

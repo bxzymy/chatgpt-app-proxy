@@ -2,77 +2,115 @@
 
 [简体中文](README.zh-CN.md)
 
-## Choose your platform
+Native tray and menu bar assistants that launch the installed official ChatGPT desktop app with an existing HTTP/Mixed proxy. Configure the assistant once, then use its icon to launch, show, or request a normal restart of ChatGPT.
 
-| Platform | Entry point | Guide |
-| --- | --- | --- |
-| Windows | `Launch-ChatGPT.cmd` / PowerShell | [Windows quick start below](#quick-start) |
-| macOS | Native menu bar assistant `App Proxy.app` | [macOS guide and interface previews](docs/macos.md) |
+## Download
 
-The macOS source and build script live in [`macos/`](macos/). The Windows PowerShell launcher documentation continues below.
+Open [GitHub Releases](https://github.com/bxzymy/chatgpt-app-proxy/releases) and choose the package for your platform. If no published release is available, use the source-build commands below.
 
-A minimal, auditable PowerShell launcher for the **Microsoft Store ChatGPT desktop app on Windows**. It attempts to send app network requests through an existing local HTTP/Mixed proxy **without enabling a system-wide proxy or TUN mode**.
+| Platform | Release package | Daily entry point | Guide |
+| --- | --- | --- | --- |
+| Windows | `AppProxy-<version>-Windows.zip` | Native tray assistant `App Proxy.exe` | [Windows guide](docs/windows.md) |
+| macOS | `AppProxy-<version>-macOS-universal.zip` | Native menu bar assistant `App Proxy.app` | [macOS guide](docs/macos.md) |
 
+Each package includes the application, English and Chinese instructions, the MIT license, and source/version metadata. `SHA256SUMS.txt` accompanies the two ZIPs. Download a platform ZIP from release assets; GitHub's automatic **Source code** archives contain source rather than a built app.
 
-## What it does
-
-- Checks the local HTTP/Mixed proxy listener (default `127.0.0.1:7890`).
-- Locates the currently installed Microsoft Store ChatGPT package (`OpenAI.Codex`, with a legacy fallback).
-- Attempts to start the app with `--proxy-server`, `--proxy-bypass-list`, and `--disable-quic` flags.
-- Supplies `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` environment variables to compatible child processes.
-- Does **not** modify the Windows system proxy, enable TUN, install drivers, inject DLLs or provide proxy servers.
-
-## Requirements
-
-- Windows 10/11 and the Microsoft Store version of ChatGPT installed.
-- Windows PowerShell 5.1 and an existing local HTTP/Mixed proxy (e.g., Clash Verge Rev or Mihomo).
-- The configured local proxy port must be reachable. **Port reachability alone does not verify proxy routing.**
+Windows builds are unsigned. macOS builds use ad-hoc signing without Apple notarization; the package instructions cover first-open handling. See [v1.0.0 release notes](docs/releases/v1.0.0.md) and the [release preparation guide](docs/RELEASING.md).
 
 ## Quick start
 
-1. Start your proxy client in **Rule** mode. Leave **System Proxy** and **TUN** disabled.
-2. Verify the client's **HTTP or Mixed Port** is `7890` (or supply a different port below).
-3. Completely exit ChatGPT if it is already running.
-4. Double-click [`Launch-ChatGPT.cmd`](Launch-ChatGPT.cmd).
-5. In Clash Verge, open **Connections** and verify that ChatGPT-related requests actually appear and match the intended rules.
+1. Install the official ChatGPT desktop app and start your existing proxy client, such as Clash Verge Rev / Mihomo.
+2. Confirm its **HTTP or Mixed** listener. System proxy and TUN can stay disabled.
+3. Extract the release ZIP. Put the EXE in a stable folder on Windows, or move the `.app` into Applications on macOS.
+4. Open the assistant and save the actual proxy setting. Windows uses the loopback port, default `127.0.0.1:7890`; macOS accepts an HTTP/Mixed address and the selected ChatGPT.app path.
+5. Completely quit ChatGPT before applying the proxy for the first time, then launch it through the assistant. Verify real requests and rule matches in your proxy client's **Connections** view.
 
-For another port, run:
+Closing the panel leaves the assistant in its tray/menu bar. Quitting the assistant leaves ChatGPT running. Login startup and automatic ChatGPT launch are separate options, both off by default. Restart checks the proxy before requesting a normal close/quit. If Windows ChatGPT keeps running after its window closes, quit it from its own menu and launch again.
+
+## Requirements
+
+| Platform | Assistant requirements |
+| --- | --- |
+| Windows | Windows 10 1903+ / Windows 11, .NET Framework 4.8+ and Windows PowerShell 5.1 (included), installed Microsoft Store ChatGPT. |
+| macOS | macOS 13+ for the assistant, a compatible installed official ChatGPT.app. The assistant bundle includes Apple Silicon and Intel executable slices; ChatGPT's own hardware/OS requirements still apply. |
+
+Daily use does not require an installer, administrator access, a .NET SDK, Xcode, Node.js, or Python. The interface currently uses Chinese labels. Both platforms require a working unauthenticated HTTP/Mixed proxy; this project does not provide proxy servers.
+
+## Interface previews
+
+| Windows tray panel | macOS menu bar panel |
+| --- | --- |
+| ![Native Windows panel](docs/images/windows/panel.png) | ![Native macOS panel](docs/images/macos/panel.png) |
+
+These previews render the actual native controls offscreen using isolated example data. They are not desktop screenshots or evidence of real proxy routing. Settings and diagnostics previews are in the platform guides.
+
+## Build from source
+
+Windows, from the repository root:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\build.ps1
+```
+
+Open `dist/App Proxy.exe`. The build uses the Windows built-in C# compiler; the PowerShell launch script is embedded, so the EXE can be copied on its own.
+
+macOS, from the repository root:
+
+```bash
+bash macos/build.sh
+```
+
+Open `dist/App Proxy.app`. The build uses macOS built-in `osacompile`, AppKit/JXA, and ad-hoc signing. Native sources live in [`windows/`](windows/) and [`macos/`](macos/); both read the root [`VERSION`](VERSION).
+
+## Original Windows script entry point
+
+The original [`Launch-ChatGPT.cmd`](Launch-ChatGPT.cmd) / [`Launch-ChatGPT.ps1`](Launch-ChatGPT.ps1) remains available. Completely quit ChatGPT, then double-click the `.cmd`, or specify a port:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Launch-ChatGPT.ps1 -Port 7897
 ```
 
-If the app is already running, quit it normally first. `-ForceRestart` is available, but forcibly closing processes can discard unsaved work.
+The script's optional `-ForceRestart` forcibly closes existing processes and can discard unsaved work. The native assistant's ordinary restart does not use this option.
 
-## Traffic flow
+## Proxy behavior and troubleshooting
 
 ```text
-ChatGPT.exe --proxy-server=http://127.0.0.1:7890
-     -> local HTTP/Mixed proxy listener
-     -> Clash/Mihomo Rule evaluation
-     -> PROXY or DIRECT
+ChatGPT startup arguments / process-scoped proxy environment
+    -> existing HTTP/Mixed listener
+    -> Clash / Mihomo rules
+    -> PROXY or DIRECT
 ```
 
-**Rules do not capture traffic by themselves.** The app must first send its requests to the proxy listener. This project attempts to configure that explicitly; it cannot guarantee that every native subsystem honors the proxy settings.
+Rules apply to traffic that actually enters the proxy. Startup parameters and environment variables cannot enforce routing for native components that ignore them. A reachable port or matching process record does not establish that all app traffic uses the proxy. Verify login, chat, uploads, voice, and other features separately.
 
-For rule examples see [docs/clash-rules.md](docs/clash-rules.md).
+- **Port unavailable:** start the proxy client and check its actual HTTP/Mixed port.
+- **App not found:** install the official app; this project does not install ChatGPT.
+- **Configuration changed:** restart ChatGPT through the assistant to attempt applying it.
+- **App starts but does not connect:** inspect the proxy client's connection view. Windows MSIX activation can change between app releases; the package-context fallback is version dependent.
 
-## Troubleshooting
+See [Clash rule examples](docs/clash-rules.md) and the [Windows](docs/windows.md) / [macOS](docs/macos.md) guides for details.
 
-- **Port connection fails:** Start your proxy client and check its actual HTTP/Mixed Port.
-- **Package not found:** Install the official Microsoft Store app; this project does not install ChatGPT.
-- **App already running:** Completely quit ChatGPT and rerun the launcher.
-- **'Missing package identity' or app exits immediately:** MSIX app activation may have changed. The fallback is experimental; please file an issue including Windows and app versions.
-- **App opens but does not connect:** Inspect Clash Verge > Connections. If no app requests appear, the launch arguments or environment variables may not be honored.
-- **Only some app features work:** Different components may use different network stacks. This launcher is not a transparent proxy.
+## Development checks
+
+```powershell
+# On Windows: build plus isolated fixture/native-control tests
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\windows\tests\Run-Tests.ps1
+```
+
+```bash
+# Model tests also run outside macOS; full native tests require macOS
+node --test macos/tests/core.test.js
+node --test macos/tests/*.test.js
+```
+
+GitHub Actions prepares both release ZIPs on their native systems. See [release preparation](docs/RELEASING.md). Tests use isolated fixture apps and loopback listeners; they do not close/restart real ChatGPT or register login startup.
 
 ## Security and privacy
 
-The scripts use built-in Windows PowerShell commands. No remote scripts are downloaded and no telemetry is collected by this launcher. Check the source before executing it. The `.cmd` uses `-ExecutionPolicy Bypass` **for its child PowerShell process only**; it does not change machine-wide policy. Administrator rights should not be necessary.
+The assistants do not modify the system proxy, enable TUN, install drivers, inject DLLs, modify ChatGPT, or collect telemetry. Windows proxy variables apply only to the helper and its children; `ExecutionPolicy Bypass` applies only to the child PowerShell process. Login startup is registered only when explicitly selected in settings.
 
-Never publish proxy subscriptions, node credentials, ChatGPT tokens, session files, or private diagnostic logs.
-
+Settings and rotating logs remain local: `%LOCALAPPDATA%\AppProxyAssistant\` on Windows and `~/Library/Application Support/AppProxyAssistant/` on macOS. Never publish proxy subscriptions, node credentials, account tokens, or private logs.
 
 ## License
 
-MIT; before publication replace `[Your Name]` in [LICENSE](LICENSE) with your preferred copyright holder.
+[MIT](LICENSE).

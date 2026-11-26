@@ -6,20 +6,34 @@ param(
     [int] $Port = 7890,
 
     # Force-close an existing ChatGPT instance so the new startup flags take effect.
-    [switch] $ForceRestart
+    [switch] $ForceRestart,
+
+    # Read-only package discovery for the native tray assistant. No proxy is contacted.
+    [switch] $InspectOnly,
+
+    # Optional machine-readable identity of the process observed after this launch.
+    [string] $LaunchReportPath
 )
 
 $ErrorActionPreference = 'Stop'
 $proxy = "http://127.0.0.1:$Port"
 
 try {
-    Write-Host "Checking local proxy listener: $proxy"
-    $client = New-Object System.Net.Sockets.TcpClient
-    try {
-        $client.Connect('127.0.0.1', $Port)
-    }
-    finally {
-        $client.Dispose()
+    if (-not $InspectOnly) {
+        Write-Host "Checking local proxy listener: $proxy"
+        $client = New-Object System.Net.Sockets.TcpClient
+        $pending = $null
+        try {
+            $pending = $client.BeginConnect('127.0.0.1', $Port, $null, $null)
+            if (-not $pending.AsyncWaitHandle.WaitOne(2000)) {
+                throw "Proxy connection timed out: $proxy"
+            }
+            $client.EndConnect($pending)
+        }
+        finally {
+            if ($pending) { $pending.AsyncWaitHandle.Close() }
+            $client.Dispose()
+        }
     }
 
     $packages = @(
@@ -59,6 +73,15 @@ try {
         throw "App executable not found under $($package.InstallLocation)."
     }
 
+    if ($InspectOnly) {
+        [pscustomobject]@{
+            packageName = [string] $package.Name
+            packageFullName = [string] $package.PackageFullName
+            executablePath = [string] $executable
+        } | ConvertTo-Json -Compress
+        return
+    }
+
     $processName = [System.IO.Path]::GetFileNameWithoutExtension($executable)
     $existing = @(Get-Process -Name $processName -ErrorAction SilentlyContinue)
     if ($existing.Count -gt 0) {
@@ -86,8 +109,10 @@ try {
 
     Write-Host "Launching $($package.Name) with $proxy"
     $started = $false
+    $launchBegan = [DateTime]::UtcNow
+    $launchedProcess = $null
     try {
-        Start-Process -FilePath $executable -ArgumentList $flags -ErrorAction Stop | Out-Null
+        $launchedProcess = Start-Process -FilePath $executable -ArgumentList $flags -PassThru -ErrorAction Stop
         Start-Sleep -Seconds 2
         $started = [bool] (Get-Process -Name $processName -ErrorAction SilentlyContinue)
     }
@@ -106,6 +131,32 @@ try {
 
     if (-not $started) {
         throw 'ChatGPT did not remain running. The installed package may require a different activation method.'
+    }
+
+    if ($LaunchReportPath) {
+        # A name match alone cannot establish process identity. Only record a live,
+        # newly observed process at the resolved executable path.
+        $candidates = @(
+            if ($launchedProcess) { Get-Process -Id $launchedProcess.Id -ErrorAction SilentlyContinue }
+            Get-Process -Name $processName -ErrorAction SilentlyContinue
+        )
+        $observed = $candidates | Where-Object {
+            try {
+                $_.Path -eq $executable -and $_.StartTime.ToUniversalTime() -ge $launchBegan.AddSeconds(-1)
+            }
+            catch { $false }
+        } | Sort-Object StartTime | Select-Object -First 1
+        if ($observed) {
+            [pscustomobject]@{
+                schemaVersion = 1
+                processId = $observed.Id
+                startTimeUtcTicks = $observed.StartTime.ToUniversalTime().Ticks.ToString()
+                executablePath = [string] $executable
+                port = $Port
+            } | ConvertTo-Json -Compress | ForEach-Object {
+                [IO.File]::WriteAllText($LaunchReportPath, $_, (New-Object Text.UTF8Encoding($false)))
+            }
+        }
     }
 
     Write-Host ''

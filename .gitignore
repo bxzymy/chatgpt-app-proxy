@@ -8,6 +8,6 @@ Thumbs.db
 .vscode/
 .idea/
 
-# macOS assistant build outputs
+# Native assistant build outputs
 /dist/
 /.build/

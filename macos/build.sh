@@ -4,6 +4,8 @@
 set -euo pipefail
 cd -- "$(dirname -- "$0")/.."
 [[ $(uname -s) == Darwin ]] || { printf 'This application builds on macOS only.\n' >&2; exit 1; }
+version=$(tr -d '\r\n' < VERSION)
+[[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { printf 'VERSION must contain major.minor.patch.\n' >&2; exit 1; }
 
 destination=${1:-"$PWD/dist"}
 mkdir -p -- "$destination"
@@ -28,8 +30,8 @@ set_value() {
 set_value CFBundleIdentifier string local.appproxy.assistant
 set_value CFBundleName string 'App Proxy'
 set_value CFBundleDisplayName string '应用代理助手'
-set_value CFBundleShortVersionString string 1.0.0
-set_value CFBundleVersion string 1
+set_value CFBundleShortVersionString string "$version"
+set_value CFBundleVersion string "$version"
 set_value LSUIElement bool true
 set_value LSMinimumSystemVersion string 13.0
 set_value NSHighResolutionCapable bool true

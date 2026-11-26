@@ -1,0 +1,100 @@
+name: Prepare release packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version, matching VERSION (without v)'
+        required: true
+        default: '1.0.0'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check requested version
+        shell: powershell
+        run: |
+          if ((Get-Content VERSION -Raw).Trim() -ne $env:RELEASE_VERSION) { throw 'Input differs from VERSION.' }
+      - name: Build and run isolated native tests
+        shell: powershell
+        run: .\windows\tests\Run-Tests.ps1
+      - name: Package and verify Windows ZIP
+        shell: powershell
+        run: .\windows\package-release.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-Windows
+          path: dist/releases/v${{ inputs.version }}/AppProxy-${{ inputs.version }}-Windows.zip
+          if-no-files-found: error
+      - name: Upload isolated test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-Windows-tests
+          include-hidden-files: true
+          path: |
+            .build/windows/tests-*/results.json
+            .build/windows/tests-*/previews/*.png
+
+  macos:
+    runs-on: macos-latest
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check requested version and shell scripts
+        run: |
+          test "$(tr -d '\r\n' < VERSION)" = "$RELEASE_VERSION"
+          bash -n macos/build.sh
+          bash -n macos/package-release.sh
+      - name: Run isolated model and native app tests
+        run: node --test macos/tests/*.test.js
+      - name: Build and package universal macOS app
+        run: |
+          bash macos/build.sh
+          bash macos/package-release.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macOS
+          path: dist/releases/v${{ inputs.version }}/AppProxy-${{ inputs.version }}-macOS-universal.zip
+          if-no-files-found: error
+
+  assemble:
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-Windows
+          merge-multiple: true
+          path: dist/release
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-macOS
+          merge-multiple: true
+          path: dist/release
+      - name: Validate source identities, archives, checksums, and notes
+        run: python3 release/assemble.py --directory dist/release --version "$RELEASE_VERSION" --commit "$GITHUB_SHA"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-v${{ inputs.version }}
+          path: dist/release/*
+          if-no-files-found: error

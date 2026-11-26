@@ -1,0 +1,46 @@
+name: Windows tray assistant
+
+on:
+  push:
+    paths:
+      - 'windows/**'
+      - 'Launch-ChatGPT.ps1'
+      - 'VERSION'
+      - 'docs/windows*'
+      - 'docs/images/windows/**'
+      - '.github/workflows/windows-assistant.yml'
+  pull_request:
+    paths:
+      - 'windows/**'
+      - 'Launch-ChatGPT.ps1'
+      - 'VERSION'
+      - 'docs/windows*'
+      - 'docs/images/windows/**'
+      - '.github/workflows/windows-assistant.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run isolated native tests
+        shell: powershell
+        run: .\windows\tests\Run-Tests.ps1
+      - name: Upload single-file application
+        uses: actions/upload-artifact@v4
+        with:
+          name: App-Proxy-Windows
+          path: dist/App Proxy.exe
+      - name: Upload test reports and control previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-test-results
+          include-hidden-files: true
+          path: |
+            .build/windows/tests-*/results.json
+            .build/windows/tests-*/previews/*.png
